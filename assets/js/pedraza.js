@@ -175,30 +175,53 @@
     });
   });
 
-  // Muestras de color
-  var demo = document.querySelector('.panel-demo'), dname = demo.querySelector('.panel-name'), flipShine = false;
-  [].forEach.call(document.querySelectorAll('.chip'), function (c, i) {
-    c.setAttribute('aria-pressed', i ? 'false' : 'true');
+  // Igualación: comparador arrastrable + colores
+  var cmp = document.querySelector('.compare'), drag = false, cname = document.querySelector('.cmp-name');
+  function setX(e) { var r = cmp.getBoundingClientRect(); cmp.style.setProperty('--x', (clamp((e.clientX - r.left) / r.width) * 100).toFixed(1) + '%'); }
+  cmp.addEventListener('pointerdown', function (e) { drag = true; setX(e); });
+  window.addEventListener('pointermove', function (e) { if (drag) setX(e); });
+  window.addEventListener('pointerup', function () { drag = false; });
+  var chips = [].slice.call(document.querySelectorAll('.chip'));
+  chips.forEach(function (c) {
     c.addEventListener('click', function () {
-      [].forEach.call(document.querySelectorAll('.chip'), function (o) { o.setAttribute('aria-pressed', o === c ? 'true' : 'false'); });
-      demo.style.setProperty('--paint', c.style.getPropertyValue('--c'));
-      dname.textContent = c.getAttribute('data-name');
-      flipShine = !flipShine; demo.style.setProperty('--shine', flipShine ? '30%' : '-30%');
+      chips.forEach(function (o) { o.setAttribute('aria-checked', o === c ? 'true' : 'false'); });
+      var f = c.getAttribute('data-f'); cmp.style.setProperty('--paint', f === 'none' ? 'none' : f);
+      cname.textContent = c.getAttribute('data-name');
     });
   });
 
-  // Barra de proceso que se llena al hacer scroll
-  var track = document.querySelector('.track'), items = [].slice.call(track.children);
-  function fill() {
-    var r = track.getBoundingClientRect(), vh = window.innerHeight;
-    var f = clamp((vh * .75 - r.top) / (r.height + vh * .2));
-    track.style.setProperty('--fill', f.toFixed(3));
-    items.forEach(function (li, i) { li.classList.toggle('on', f >= (i + .2) / items.length); });
+  // Proceso: el paso visible cambia la imagen fija
+  var steps = [].slice.call(document.querySelectorAll('.story-steps li'));
+  var imgs = [].slice.call(document.querySelectorAll('.story-media img'));
+  var stepNum = document.querySelector('.story-step b'), media = document.querySelector('.story-media');
+  function story() {
+    var mid = window.innerHeight * .55, cur = 0;
+    steps.forEach(function (li, i) { if (li.getBoundingClientRect().top < mid) cur = i; });
+    steps.forEach(function (li, i) { li.classList.toggle('on', i === cur); });
+    imgs.forEach(function (im, i) { im.classList.toggle('on', i === cur); });
+    stepNum.textContent = ('0' + (cur + 1)).slice(-2);
+    media.style.setProperty('--sp', ((cur + 1) / steps.length * 100) + '%');
   }
-  window.addEventListener('scroll', fill, { passive: true }); fill();
+  window.addEventListener('scroll', story, { passive: true }); story();
+
+  // Contadores
+  var counted = false, facts = document.querySelector('.facts');
+  function count() {
+    if (counted || facts.getBoundingClientRect().top > window.innerHeight * .9) return;
+    counted = true;
+    [].forEach.call(document.querySelectorAll('[data-count]'), function (el) {
+      var to = parseFloat(el.getAttribute('data-count')), dec = +(el.getAttribute('data-dec') || 0), t0 = performance.now();
+      (function step(now) {
+        var k = Math.min(1, (now - t0) / 1400), v = to * (1 - Math.pow(1 - k, 3));
+        el.textContent = v.toFixed(dec).replace('.', ',');
+        if (k < 1) requestAnimationFrame(step);
+      })(t0);
+    });
+  }
+  window.addEventListener('scroll', count, { passive: true }); count();
 
   // Aparición suave
-  var rv = document.querySelectorAll('.lead-grid > *, .sheet, .spec-list li, .process-head, .chips-copy, .insure > *, .shop-card, .shop-contact');
+  var rv = document.querySelectorAll('.lead-text, .lead-photo, .sheet, .spec-list li, .specs-photo, .process-head, .match-copy, .compare, .insure > *, .shop-card, .shop-contact');
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { rootMargin: '0px 0px -8% 0px' });
     [].forEach.call(rv, function (el) { el.classList.add('rv'); io.observe(el); });
